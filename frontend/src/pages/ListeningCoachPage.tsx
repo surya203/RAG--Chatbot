@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   CheckCircle2,
   Clock,
   Headphones,
@@ -9,8 +8,9 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
+import StudentPageShell from "@/components/StudentPageShell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -229,20 +229,10 @@ export default function ListeningCoachPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-5xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/exam-profile">Exam profile</Link>
-          </Button>
-        </div>
-
+    <StudentPageShell
+      title="Listening Practice"
+      description="Audio exercises with replay limits, timers, and scored questions."
+    >
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <Card className="h-fit">
             <CardHeader className="pb-3">
@@ -570,7 +560,6 @@ export default function ListeningCoachPage() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </StudentPageShell>
   );
 }

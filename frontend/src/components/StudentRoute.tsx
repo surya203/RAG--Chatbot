@@ -1,5 +1,6 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
+import StudentLayout from "@/components/StudentLayout";
 import { useAuth } from "@/context/AuthContext";
 
 /** Student-only routes (admins are sent to the admin dashboard). */
@@ -22,5 +23,5 @@ export default function StudentRoute() {
     return <Navigate to="/admin" replace />;
   }
 
-  return <Outlet />;
+  return <StudentLayout />;
 }

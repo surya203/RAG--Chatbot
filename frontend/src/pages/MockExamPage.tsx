@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   CheckCircle2,
   Clock,
   ClipboardList,
   Loader2,
   Trophy,
 } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
+import StudentPageShell from "@/components/StudentPageShell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -256,20 +256,11 @@ export default function MockExamPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-5xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/progress">Progress</Link>
-          </Button>
-        </div>
-
+    <StudentPageShell
+      title="Mock exams"
+      description="Full-length timed practice with writing, speaking, reading, and listening sections."
+      maxWidth="5xl"
+    >
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <div className="space-y-4">
             <Card className="h-fit">
@@ -556,8 +547,7 @@ export default function MockExamPage() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </StudentPageShell>
   );
 }
 

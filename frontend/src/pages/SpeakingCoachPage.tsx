@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Mic, Square } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Loader2, Mic, Square } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
+import StudentPageShell from "@/components/StudentPageShell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -194,20 +195,10 @@ export default function SpeakingCoachPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-5xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/exam-profile">Exam profile</Link>
-          </Button>
-        </div>
-
+    <StudentPageShell
+      title="Speaking Coach"
+      description="Record spoken answers and get AI feedback on fluency and coherence."
+    >
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <Card className="h-fit">
             <CardHeader className="pb-3">
@@ -517,7 +508,6 @@ export default function SpeakingCoachPage() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </StudentPageShell>
   );
 }

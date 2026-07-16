@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Target } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Loader2, Target } from "lucide-react";
 
+import StudentPageShell from "@/components/StudentPageShell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -56,23 +56,19 @@ export default function ExamProfilePage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-xl space-y-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/dashboard">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-        </Button>
-
-        <Card>
+    <StudentPageShell
+      title="Exam profile"
+      description="Tell us which exam you are preparing for so practice can be tailored."
+      maxWidth="xl"
+    >
+        <Card className="border-slate-200/80 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-[var(--color-primary)]" />
-              Exam profile
+              Your target exam
             </CardTitle>
             <CardDescription>
-              Tell us which exam you are preparing for so practice can be tailored.
+              Used to filter prompts, mocks, and vocabulary decks.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -129,7 +125,6 @@ export default function ExamProfilePage() {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </StudentPageShell>
   );
 }

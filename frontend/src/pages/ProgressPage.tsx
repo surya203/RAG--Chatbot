@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   BookOpen,
   Calendar,
   Flame,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import StudentPageShell from "@/components/StudentPageShell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -66,20 +66,11 @@ export default function ProgressPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/exam-profile">Exam profile</Link>
-          </Button>
-        </div>
-
+    <StudentPageShell
+      title="Progress"
+      description="Track streaks, daily goals, skill breakdown, and your personalized study plan."
+      maxWidth="4xl"
+    >
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -327,7 +318,6 @@ export default function ProgressPage() {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </StudentPageShell>
   );
 }

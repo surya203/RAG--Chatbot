@@ -84,7 +84,7 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
       </div>
 
       <div
-        className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--color-border)] p-6 text-center transition-colors hover:bg-[var(--color-accent)]"
+        className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-uk-navy/20 p-6 text-center transition-colors hover:border-uk-navy/40 hover:bg-uk-navy/5"
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -92,7 +92,7 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
           addFiles(e.dataTransfer.files);
         }}
       >
-        <Upload className="mb-2 h-6 w-6 text-[var(--color-muted-foreground)]" />
+        <Upload className="mb-2 h-6 w-6 text-uk-navy/50" />
         <p className="text-sm font-medium">Click to choose PDFs or drag them here</p>
         <p className="text-xs text-[var(--color-muted-foreground)]">
           Multiple files supported • PDF only
@@ -115,7 +115,7 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
               className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-sm"
             >
               <span className="flex min-w-0 items-center gap-2">
-                <FileText className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
+                <FileText className="h-4 w-4 shrink-0 text-uk-red" />
                 <span className="truncate">{file.name}</span>
                 <span className="shrink-0 text-xs text-[var(--color-muted-foreground)]">
                   {formatBytes(file.size)}
@@ -140,7 +140,7 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
         <div className="space-y-1">
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
             <div
-              className="h-full bg-[var(--color-primary)] transition-all"
+              className="h-full bg-uk-red transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -154,7 +154,7 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
       {error && <p className="text-sm text-[var(--color-destructive)]">{error}</p>}
 
       <Button
-        className="w-full"
+        className="w-full bg-uk-red shadow-sm hover:bg-uk-red-dark"
         disabled={files.length === 0 || mutation.isPending}
         onClick={() => mutation.mutate()}
       >

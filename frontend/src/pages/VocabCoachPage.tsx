@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   BookMarked,
   Check,
   Loader2,
   RotateCcw,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
+import StudentPageShell from "@/components/StudentPageShell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -104,20 +103,11 @@ export default function VocabCoachPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/progress">Progress dashboard</Link>
-          </Button>
-        </div>
-
+    <StudentPageShell
+      title="Vocabulary SRS"
+      description="Spaced-repetition flashcards to build long-term exam vocabulary."
+      maxWidth="3xl"
+    >
         <div className="grid gap-3 sm:grid-cols-4">
           <Card>
             <CardContent className="py-4 text-center">
@@ -341,7 +331,6 @@ export default function VocabCoachPage() {
             </CardContent>
           </Card>
         )}
-      </div>
-    </div>
+    </StudentPageShell>
   );
 }

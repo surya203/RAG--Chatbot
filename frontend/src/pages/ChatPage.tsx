@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   FileText,
   Loader2,
   Mic,
@@ -11,7 +10,6 @@ import {
   Square,
   Volume2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import ConversationSidebar from "@/components/ConversationSidebar";
 import { Markdown } from "@/components/Markdown";
@@ -136,17 +134,11 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-full min-h-0 bg-slate-50">
       <ConversationSidebar activeId={activeId} onSelect={(id) => setActiveId(id)} />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-[var(--color-border)] bg-white px-4 py-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              PDFs
-            </Link>
-          </Button>
           <h1 className="truncate text-sm font-semibold">
             {detail?.title ?? "New chat"}
           </h1>
