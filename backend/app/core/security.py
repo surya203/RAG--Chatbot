@@ -43,6 +43,22 @@ def create_refresh_token(subject: str) -> str:
     )
 
 
+def verify_refresh_token(token: str) -> str | None:
+    """Return the subject (user id) if the refresh token is valid, else None."""
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+    except JWTError:
+        return None
+
+    if payload.get("type") != "refresh":
+        return None
+
+    subject = payload.get("sub")
+    return subject if isinstance(subject, str) else None
+
+
 def _password_fingerprint(hashed_password: str) -> str:
     """Short, stable fingerprint of the current password hash.
 

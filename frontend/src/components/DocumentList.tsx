@@ -194,18 +194,28 @@ function DocumentRow({
             <Button
               variant="ghost"
               size="sm"
+              disabled={doc.status !== "ready"}
               onClick={() => onSummarize(doc)}
               aria-label="AI summary"
-              title="AI summary"
+              title={
+                doc.status === "ready"
+                  ? "AI summary"
+                  : "Available after processing finishes"
+              }
             >
               <Sparkles className="h-4 w-4 text-[var(--color-primary)]" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              disabled={doc.status !== "ready"}
               onClick={() => onQuiz(doc)}
               aria-label="AI quiz"
-              title="AI quiz"
+              title={
+                doc.status === "ready"
+                  ? "AI quiz"
+                  : "Available after processing finishes"
+              }
             >
               <GraduationCap className="h-4 w-4 text-[var(--color-primary)]" />
             </Button>

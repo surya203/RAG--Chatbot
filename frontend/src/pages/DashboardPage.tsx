@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, LogOut, MessageSquare, Trophy } from "lucide-react";
+import { BookMarked, BookOpen, ClipboardList, Headphones, Loader2, LogOut, MessageSquare, Mic, PenLine, Target, TrendingUp, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import DocumentList from "@/components/DocumentList";
@@ -61,7 +61,55 @@ export default function DashboardPage() {
               Welcome back{user?.full_name ? `, ${user.full_name}` : ""}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/exam-profile">
+                <Target className="h-4 w-4" />
+                Exam profile
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/writing">
+                <PenLine className="h-4 w-4" />
+                Writing Coach
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/speaking">
+                <Mic className="h-4 w-4" />
+                Speaking Coach
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/reading">
+                <BookOpen className="h-4 w-4" />
+                Reading Practice
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/listening">
+                <Headphones className="h-4 w-4" />
+                Listening Practice
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/vocab">
+                <BookMarked className="h-4 w-4" />
+                Vocabulary SRS
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/progress">
+                <TrendingUp className="h-4 w-4" />
+                Progress
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/mocks">
+                <ClipboardList className="h-4 w-4" />
+                Mock Exams
+              </Link>
+            </Button>
             <Button variant="outline" onClick={() => setShowLeaderboard(true)}>
               <Trophy className="h-4 w-4" />
               Leaderboard

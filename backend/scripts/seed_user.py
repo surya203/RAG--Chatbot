@@ -27,6 +27,7 @@ def seed_user(
             email=email.lower(),
             hashed_password=get_password_hash(password),
             full_name=full_name,
+            role="student",
             is_active=True,
             is_verified=True,
         )

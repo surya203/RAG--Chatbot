@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
 
@@ -19,7 +20,14 @@ from app.core.config import settings
 from app.core import storage
 from app.core.deps import get_current_user
 from app.db.session import get_db
-from app.models.document import DEFAULT_SUBJECT, STATUS_PENDING, Document
+from app.models.document import (
+    DEFAULT_SUBJECT,
+    STATUS_FAILED,
+    STATUS_PENDING,
+    STATUS_PROCESSING,
+    STATUS_READY,
+    Document,
+)
 from app.models.summary import Summary
 from app.models.user import User
 from app.schemas.document import DocumentResponse, DocumentUpdate, UploadResponse
@@ -32,6 +40,9 @@ from app.services import summaries as summaries_service
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 PDF_MAGIC = b"%PDF"
+
+# Documents stuck in processing (e.g. server restart mid-ingest) flip to failed.
+STUCK_PROCESSING_MINUTES = 30
 
 
 def _to_response(doc: Document) -> DocumentResponse:
@@ -63,6 +74,28 @@ def _get_owned_document(doc_id: str, user: User, db: Session) -> Document:
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return doc
+
+
+def _recover_stuck_processing(docs: list[Document], db: Session) -> None:
+    """Mark long-running processing docs as failed so the UI can reprocess."""
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=STUCK_PROCESSING_MINUTES)
+    changed = False
+    for doc in docs:
+        if doc.status != STATUS_PROCESSING:
+            continue
+        updated = doc.updated_at
+        if updated.tzinfo is None:
+            updated = updated.replace(tzinfo=timezone.utc)
+        if updated <= cutoff:
+            doc.status = STATUS_FAILED
+            doc.error = (
+                "Processing timed out or was interrupted. Please retry."
+            )
+            changed = True
+    if changed:
+        db.commit()
+        for doc in docs:
+            db.refresh(doc)
 
 
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
@@ -141,6 +174,7 @@ def list_documents(
         .order_by(Document.subject.asc(), Document.created_at.desc())
         .all()
     )
+    _recover_stuck_processing(docs, db)
     return [_to_response(d) for d in docs]
 
 
@@ -191,7 +225,13 @@ def update_document(
     doc = _get_owned_document(doc_id, current_user, db)
 
     if payload.original_name is not None:
-        doc.original_name = payload.original_name.strip()[:255]
+        name = payload.original_name.strip()
+        if not name:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Document name cannot be empty",
+            )
+        doc.original_name = name[:255]
     if payload.subject is not None:
         doc.subject = payload.subject.strip()[:120] or DEFAULT_SUBJECT
 
@@ -261,6 +301,11 @@ def generate_summary(
 ):
     """Generate (or regenerate) a summary artifact from the document text."""
     doc = _get_owned_document(doc_id, current_user, db)
+    if doc.status != STATUS_READY:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document must finish processing before generating summaries.",
+        )
     spec = summaries_service.get_summary_type(summary_type)
     if not spec:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown summary type")

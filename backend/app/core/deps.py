@@ -39,3 +39,25 @@ def get_current_user(
     if user is None or not user.is_active:
         raise credentials_exception
     return user
+
+
+def require_admin(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+    from app.models.user import ROLE_ADMIN
+
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user
+
+
+def require_student(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+    from app.models.user import ROLE_STUDENT
+
+    if current_user.role != ROLE_STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Student access required",
+        )
+    return current_user

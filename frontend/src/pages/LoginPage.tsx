@@ -25,7 +25,7 @@ export default function LoginPage() {
   const mutation = useMutation({
     mutationFn: login,
     onSuccess: () => {
-      navigate("/dashboard");
+      navigate("/");
     },
     onError: () => {
       setError("Invalid email or password. Please try again.");

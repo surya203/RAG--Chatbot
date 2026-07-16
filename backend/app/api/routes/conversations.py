@@ -80,7 +80,13 @@ def update_conversation(
 ):
     conv = _get_owned_conversation(conv_id, current_user, db)
     if payload.title is not None:
-        conv.title = payload.title.strip()[:255]
+        title = payload.title.strip()
+        if not title:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Conversation title cannot be empty",
+            )
+        conv.title = title[:255]
     if payload.is_pinned is not None:
         conv.is_pinned = payload.is_pinned
     db.add(conv)

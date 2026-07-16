@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -16,6 +16,79 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
+let refreshPromise: Promise<string | null> | null = null;
+
+type SessionExpiredListener = () => void;
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
+
+/** Subscribe to forced logout when refresh fails (401 after expired access token). */
+export function onSessionExpired(listener: SessionExpiredListener): () => void {
+  sessionExpiredListeners.add(listener);
+  return () => sessionExpiredListeners.delete(listener);
+}
+
+function notifySessionExpired() {
+  sessionExpiredListeners.forEach((listener) => listener());
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) {
+    clearAuthTokens();
+    notifySessionExpired();
+    return null;
+  }
+
+  try {
+    // Use a bare axios call so this does not recurse through interceptors.
+    const { data } = await axios.post<{
+      access_token: string;
+      refresh_token: string;
+    }>(`${API_BASE_URL}/api/v1/auth/refresh`, { refresh_token: refreshToken });
+    setAuthTokens(data.access_token, data.refresh_token);
+    return data.access_token;
+  } catch {
+    clearAuthTokens();
+    notifySessionExpired();
+    return null;
+  }
+}
+
+/** Single-flight refresh so concurrent 401s share one /auth/refresh call. */
+export function ensureFreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const original = error.config as RetryConfig | undefined;
+    if (
+      error.response?.status === 401 &&
+      original &&
+      !original._retry &&
+      !original.url?.includes("/auth/login") &&
+      !original.url?.includes("/auth/register") &&
+      !original.url?.includes("/auth/refresh")
+    ) {
+      original._retry = true;
+      const accessToken = await ensureFreshAccessToken();
+      if (accessToken) {
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return api(original);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export function setAuthTokens(accessToken: string, refreshToken: string) {
   localStorage.setItem("access_token", accessToken);

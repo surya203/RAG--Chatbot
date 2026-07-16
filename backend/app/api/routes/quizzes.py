@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core import storage
 from app.core.deps import get_current_user
 from app.db.session import get_db
-from app.models.document import Document
+from app.models.document import STATUS_READY, Document
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.user import User
 from app.schemas.quiz import (
@@ -82,6 +82,11 @@ def create_quiz(
     db: Session = Depends(get_db),
 ):
     doc = _owned_document(doc_id, current_user, db)
+    if doc.status != STATUS_READY:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document must finish processing before generating quizzes.",
+        )
 
     path = storage.get_file_path(doc.stored_filename)
     if not path.exists():

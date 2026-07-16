@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, GraduationCap, Loader2, RotateCcw, X, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ const COUNTS = [5, 10, 15];
 type Step = "config" | "taking" | "results";
 
 export default function QuizModal({ document, onClose }: QuizModalProps) {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("config");
   const [type, setType] = useState<QuestionType>("mcq");
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
@@ -63,6 +64,7 @@ export default function QuizModal({ document, onClose }: QuizModalProps) {
     onSuccess: (r) => {
       setResult(r);
       setStep("results");
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     },
     onError: (err) => setError(getApiErrorMessage(err, "Could not submit the quiz.")),
   });
