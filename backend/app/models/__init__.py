@@ -1,3 +1,31 @@
-from app.models import chunk, conversation, document, quiz, summary, user
+from app.models import (
+    chunk,
+    conversation,
+    document,
+    exam_profile,
+    listening,
+    mock_exam,
+    quiz,
+    reading,
+    speaking,
+    summary,
+    user,
+    vocab,
+    writing,
+)
 
-__all__ = ["chunk", "conversation", "document", "quiz", "summary", "user"]
+__all__ = [
+    "chunk",
+    "conversation",
+    "document",
+    "exam_profile",
+    "listening",
+    "mock_exam",
+    "quiz",
+    "reading",
+    "speaking",
+    "summary",
+    "user",
+    "vocab",
+    "writing",
+]

@@ -87,36 +87,47 @@ export default function ChatPage() {
     abortRef.current = controller;
     let newConversationId: string | null = null;
 
-    await streamChatQuery(
-      { question: q, conversation_id: activeId ?? undefined },
-      {
-        signal: controller.signal,
-        onMeta: ({ conversation_id }) => {
-          newConversationId = conversation_id;
-          if (!activeId) setActiveId(conversation_id);
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
-        },
-        onSources: (sources: SourceChunk[]) =>
-          updateStreamingMessage((m) => ({ ...m, sources })),
-        onToken: (text) =>
-          updateStreamingMessage((m) => ({ ...m, content: m.content + text })),
-        onDone: () => {
-          setStreaming(false);
-          const id = newConversationId ?? activeId;
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
-          if (id) queryClient.invalidateQueries({ queryKey: ["conversation", id] });
-        },
-        onError: (message) => {
-          setError(message);
-          setStreaming(false);
-          // Drop the empty streaming placeholder on hard errors.
-          setMessages((prev) => prev.filter((m) => m.id !== STREAM_ID || m.content));
-        },
-      }
-    ).catch((err) => {
-      if (err?.name !== "AbortError") setError("Something went wrong.");
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
       setStreaming(false);
-    });
+    };
+
+    try {
+      await streamChatQuery(
+        { question: q, conversation_id: activeId ?? undefined },
+        {
+          signal: controller.signal,
+          onMeta: ({ conversation_id }) => {
+            newConversationId = conversation_id;
+            if (!activeId) setActiveId(conversation_id);
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          },
+          onSources: (sources: SourceChunk[]) =>
+            updateStreamingMessage((m) => ({ ...m, sources })),
+          onToken: (text) =>
+            updateStreamingMessage((m) => ({ ...m, content: m.content + text })),
+          onDone: () => {
+            finish();
+            const id = newConversationId ?? activeId;
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            if (id) queryClient.invalidateQueries({ queryKey: ["conversation", id] });
+          },
+          onError: (message) => {
+            setError(message);
+            finish();
+            // Drop the empty streaming placeholder on hard errors.
+            setMessages((prev) => prev.filter((m) => m.id !== STREAM_ID || m.content));
+          },
+        }
+      );
+    } catch (err) {
+      const name = err && typeof err === "object" && "name" in err ? String(err.name) : "";
+      if (name !== "AbortError") setError("Something went wrong.");
+    } finally {
+      finish();
+    }
   };
 
   const stop = () => {

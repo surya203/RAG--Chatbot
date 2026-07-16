@@ -28,7 +28,7 @@ export default function RegisterPage() {
   const mutation = useMutation({
     mutationFn: register,
     onSuccess: () => {
-      navigate("/dashboard");
+      navigate("/");
     },
     onError: (err) => {
       setError(getApiErrorMessage(err, "Could not create account. Please try again."));

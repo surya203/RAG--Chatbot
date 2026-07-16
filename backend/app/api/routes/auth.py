@@ -10,15 +10,17 @@ from app.core.security import (
     get_password_hash,
     verify_password,
     verify_password_reset_token,
+    verify_refresh_token,
 )
 from app.db.session import get_db
-from app.models.user import User
+from app.models.user import ROLE_STUDENT, User
 from app.schemas.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
     LoginResponse,
     MessageResponse,
+    RefreshRequest,
     RegisterRequest,
     ResetPasswordRequest,
     TokenResponse,
@@ -34,6 +36,7 @@ def _build_login_response(user: User) -> LoginResponse:
             id=str(user.id),
             email=user.email,
             full_name=user.full_name,
+            role=user.role,
             is_verified=user.is_verified,
         ),
         tokens=TokenResponse(
@@ -58,6 +61,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         email=email,
         hashed_password=get_password_hash(payload.password),
         full_name=payload.full_name,
+        role=ROLE_STUDENT,
         is_active=True,
         # Email verification is skipped for now, so new accounts are
         # considered verified on signup.
@@ -88,6 +92,29 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         )
 
     return _build_login_response(user)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_tokens(payload: RefreshRequest, db: Session = Depends(get_db)):
+    """Exchange a valid refresh token for a new access + refresh pair."""
+    user_id = verify_refresh_token(payload.refresh_token)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    return TokenResponse(
+        access_token=create_access_token(str(user.id)),
+        refresh_token=create_refresh_token(str(user.id)),
+    )
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)

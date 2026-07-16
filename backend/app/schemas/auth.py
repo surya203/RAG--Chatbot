@@ -3,7 +3,12 @@ from pydantic import BaseModel, EmailStr, Field
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    # No min_length on login — reject bad credentials with 401, not 422.
+    password: str = Field(min_length=1)
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 class RegisterRequest(BaseModel):
@@ -48,6 +53,7 @@ class UserPublic(BaseModel):
     id: str
     email: EmailStr
     full_name: str | None
+    role: str
     is_verified: bool
 
     model_config = {"from_attributes": True}

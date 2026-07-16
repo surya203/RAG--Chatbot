@@ -34,6 +34,8 @@ interface Options {
   /** Called with the latest transcript (interim or final). */
   onTranscript: (text: string, isFinal: boolean) => void;
   lang?: string;
+  /** Keep listening until stop() — needed for speaking practice. */
+  continuous?: boolean;
 }
 
 interface UseSpeechRecognition {
@@ -49,6 +51,7 @@ interface UseSpeechRecognition {
 export function useSpeechRecognition({
   onTranscript,
   lang = "en-US",
+  continuous = false,
 }: Options): UseSpeechRecognition {
   const ctor = getRecognitionCtor();
   const supported = !!ctor;
@@ -59,8 +62,10 @@ export function useSpeechRecognition({
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const callbackRef = useRef(onTranscript);
   callbackRef.current = onTranscript;
+  const wantListeningRef = useRef(false);
 
   const stop = useCallback(() => {
+    wantListeningRef.current = false;
     recognitionRef.current?.stop();
     setListening(false);
   }, []);
@@ -75,10 +80,18 @@ export function useSpeechRecognition({
       return;
     }
 
+    // Abort any previous recognizer before starting a new one.
+    try {
+      recognitionRef.current?.abort();
+    } catch {
+      // ignore
+    }
+
     setError(null);
+    wantListeningRef.current = true;
     const recognition = new ctor();
     recognition.lang = lang;
-    recognition.continuous = false;
+    recognition.continuous = continuous;
     recognition.interimResults = true;
 
     recognition.onresult = (e) => {
@@ -91,19 +104,36 @@ export function useSpeechRecognition({
       callbackRef.current(transcript, isFinal);
     };
     recognition.onerror = (e) => {
+      if (e.error === "aborted" || e.error === "no-speech") {
+        // Common during continuous sessions; keep going unless we stopped.
+        if (!wantListeningRef.current) setListening(false);
+        return;
+      }
       setError(
         e.error === "not-allowed"
           ? "Microphone permission was denied."
           : `Speech recognition error: ${e.error}`
       );
       setListening(false);
+      wantListeningRef.current = false;
     };
-    recognition.onend = () => setListening(false);
+    recognition.onend = () => {
+      // Chrome often ends continuous recognition; restart while session is active.
+      if (wantListeningRef.current && continuous) {
+        try {
+          recognition.start();
+          return;
+        } catch {
+          // fall through
+        }
+      }
+      setListening(false);
+    };
 
     recognitionRef.current = recognition;
     recognition.start();
     setListening(true);
-  }, [ctor, lang, secureContext]);
+  }, [ctor, lang, secureContext, continuous]);
 
   // Clean up on unmount.
   useEffect(() => () => recognitionRef.current?.abort(), []);

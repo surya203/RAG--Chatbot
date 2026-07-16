@@ -1,4 +1,4 @@
-import { getStoredAccessToken } from "@/lib/api";
+import { ensureFreshAccessToken, getStoredAccessToken } from "@/lib/api";
 import type { ChatQueryRequest, SourceChunk } from "@/types/chat";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
@@ -12,6 +12,12 @@ interface StreamHandlers {
   signal?: AbortSignal;
 }
 
+function detailToMessage(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail[0]?.msg) return String(detail[0].msg);
+  return fallback;
+}
+
 /**
  * POST a question and consume the Server-Sent Events stream.
  *
@@ -22,22 +28,35 @@ export async function streamChatQuery(
   request: ChatQueryRequest,
   handlers: StreamHandlers
 ): Promise<void> {
-  const token = getStoredAccessToken();
-  const response = await fetch(`${API_BASE_URL}/api/v1/chat/query`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(request),
-    signal: handlers.signal,
-  });
+  const doFetch = async (token: string | null) =>
+    fetch(`${API_BASE_URL}/api/v1/chat/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(request),
+      signal: handlers.signal,
+    });
+
+  let token = getStoredAccessToken();
+  let response = await doFetch(token);
+
+  // Retry once after refreshing if the access token expired.
+  if (response.status === 401) {
+    token = await ensureFreshAccessToken();
+    if (!token) {
+      handlers.onError?.("Session expired. Please sign in again.");
+      return;
+    }
+    response = await doFetch(token);
+  }
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     try {
       const body = await response.json();
-      if (body?.detail) message = body.detail;
+      message = detailToMessage(body?.detail, message);
     } catch {
       // keep default message
     }
@@ -53,10 +72,12 @@ export async function streamChatQuery(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let completed = false;
 
   const handleEvent = (raw: string) => {
     // Each SSE event is one or more "data: ..." lines.
     const dataLines = raw
+      .replace(/\r\n/g, "\n")
       .split("\n")
       .filter((l) => l.startsWith("data:"))
       .map((l) => l.slice(5).trim());
@@ -84,9 +105,11 @@ export async function streamChatQuery(
         handlers.onToken?.((event.text as string) ?? "");
         break;
       case "done":
+        completed = true;
         handlers.onDone?.();
         break;
       case "error":
+        completed = true;
         handlers.onError?.((event.message as string) ?? "Unknown error");
         break;
     }
@@ -97,7 +120,8 @@ export async function streamChatQuery(
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    // Events are separated by a blank line.
+    // Events are separated by a blank line (tolerate \r\n framing).
+    buffer = buffer.replace(/\r\n/g, "\n");
     let sep: number;
     while ((sep = buffer.indexOf("\n\n")) !== -1) {
       const rawEvent = buffer.slice(0, sep);
@@ -108,4 +132,9 @@ export async function streamChatQuery(
 
   // Flush any trailing event without a terminating blank line.
   if (buffer.trim()) handleEvent(buffer);
+
+  // Guarantee a terminal callback if the socket closed without done/error.
+  if (!completed) {
+    handlers.onDone?.();
+  }
 }

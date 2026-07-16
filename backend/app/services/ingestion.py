@@ -78,6 +78,9 @@ def ingest_document(document_id: str) -> None:
         db.rollback()
         doc = db.query(Document).filter(Document.id == uuid.UUID(document_id)).first()
         if doc:
+            # Keep status/chunks consistent: failed docs should not retain
+            # orphan vectors that retrieval would still ignore.
+            db.query(Chunk).filter(Chunk.document_id == doc.id).delete()
             doc.status = STATUS_FAILED
             doc.error = str(exc)[:1000]
             doc.chunk_count = 0

@@ -19,7 +19,8 @@ export async function uploadDocuments(
     "/api/v1/documents/upload",
     formData,
     {
-      headers: { "Content-Type": "multipart/form-data" },
+      // Drop instance JSON Content-Type so the browser adds the multipart boundary.
+      headers: { "Content-Type": false as unknown as string },
       onUploadProgress: (event) => {
         if (onProgress && event.total) {
           onProgress(Math.round((event.loaded / event.total) * 100));

@@ -104,6 +104,9 @@ def stream_answer(question: str, chunks: list[RetrievedChunk]) -> Iterator[str]:
         raise LLMError(f"Groq request failed: {exc}") from exc
 
     for event in stream:
-        delta = event.choices[0].delta.content if event.choices else None
+        try:
+            delta = event.choices[0].delta.content if event.choices else None
+        except Exception as exc:  # noqa: BLE001
+            raise LLMError(f"Groq stream failed: {exc}") from exc
         if delta:
             yield delta

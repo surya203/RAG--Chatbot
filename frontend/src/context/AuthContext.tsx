@@ -8,7 +8,12 @@ import {
   type ReactNode,
 } from "react";
 
-import { getStoredAccessToken } from "@/lib/api";
+import {
+  ensureFreshAccessToken,
+  getStoredAccessToken,
+  onSessionExpired,
+} from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
 import {
   getCurrentUser,
   login as loginRequest,
@@ -41,22 +46,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     getCurrentUser()
       .then(setUser)
-      .catch(() => logoutRequest())
+      .catch(async () => {
+        // Access token may be expired — try refresh once, then give up.
+        const refreshed = await ensureFreshAccessToken();
+        if (!refreshed) {
+          logoutRequest();
+          return;
+        }
+        try {
+          setUser(await getCurrentUser());
+        } catch {
+          logoutRequest();
+        }
+      })
       .finally(() => setIsLoading(false));
+  }, []);
+
+  // Keep UI in sync when axios/chat refresh fails mid-session.
+  useEffect(() => {
+    return onSessionExpired(() => {
+      logoutRequest();
+      queryClient.clear();
+      setUser(null);
+    });
   }, []);
 
   const login = useCallback(async (payload: LoginRequest) => {
     const response = await loginRequest(payload);
+    queryClient.clear();
     setUser(response.user);
   }, []);
 
   const register = useCallback(async (payload: RegisterRequest) => {
     const response = await registerRequest(payload);
+    queryClient.clear();
     setUser(response.user);
   }, []);
 
   const logout = useCallback(() => {
     logoutRequest();
+    queryClient.clear();
     setUser(null);
   }, []);
 

@@ -85,14 +85,11 @@ def chat_query(
         db.commit()
         db.refresh(conv)
 
-    # Persist the user's message immediately.
-    db.add(Message(conversation_id=conv.id, role=ROLE_USER, content=payload.question))
-    db.commit()
-
     conversation_id = str(conv.id)
     conversation_title = conv.title
 
-    # Embed + retrieve before streaming so config errors surface as clean HTTP.
+    # Embed + retrieve before persisting the user turn so failed embeds
+    # do not leave orphan user messages with no assistant reply.
     try:
         query_embedding = embed_query(payload.question)
     except EmbeddingError as exc:
@@ -100,13 +97,22 @@ def chat_query(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
 
-    chunks = similarity_search(
-        db,
-        user_id=current_user.id,
-        query_embedding=query_embedding,
-        document_ids=payload.document_ids,
-    )
+    try:
+        chunks = similarity_search(
+            db,
+            user_id=current_user.id,
+            query_embedding=query_embedding,
+            document_ids=payload.document_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
     sources = _source_payload(chunks)
+
+    db.add(Message(conversation_id=conv.id, role=ROLE_USER, content=payload.question))
+    db.commit()
 
     def _persist_assistant(content: str) -> None:
         # Use a fresh session: this runs while/after the response streams.
@@ -147,10 +153,11 @@ def chat_query(
                 yield _sse({"type": "token", "text": token})
             _persist_assistant(answer)
             yield _sse({"type": "done"})
-        except LLMError as exc:
+        except Exception as exc:  # noqa: BLE001 - always emit a terminal SSE event
             if answer:
                 _persist_assistant(answer)
-            yield _sse({"type": "error", "message": str(exc)})
+            message = str(exc) if isinstance(exc, LLMError) else "Answer generation failed."
+            yield _sse({"type": "error", "message": message})
 
     return StreamingResponse(
         event_stream(),

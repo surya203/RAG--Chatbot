@@ -60,7 +60,12 @@ def similarity_search(
         .filter(Chunk.user_id == user_id, Document.status == STATUS_READY)
     )
     if document_ids:
-        parsed = [uuid.UUID(d) for d in document_ids]
+        parsed: list[uuid.UUID] = []
+        for d in document_ids:
+            try:
+                parsed.append(uuid.UUID(d))
+            except ValueError as exc:
+                raise ValueError(f"Invalid document id: {d}") from exc
         query = query.filter(Chunk.document_id.in_(parsed))
 
     rows = query.all()

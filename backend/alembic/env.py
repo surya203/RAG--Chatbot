@@ -5,7 +5,21 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.db.base import Base
-from app.models import chunk, conversation, document, quiz, summary, user  # noqa: F401
+from app.models import (  # noqa: F401
+    chunk,
+    conversation,
+    document,
+    exam_profile,
+    listening,
+    mock_exam,
+    quiz,
+    reading,
+    speaking,
+    summary,
+    user,
+    vocab,
+    writing,
+)
 
 config = context.config
 
