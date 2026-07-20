@@ -12,10 +12,12 @@ import {
   Mic,
   PenLine,
   Plus,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 
 import AdminMockPanel from "@/components/AdminMockPanel";
+import AdminPdfGeneratePanel from "@/components/AdminPdfGeneratePanel";
 import AdminVocabPanel from "@/components/AdminVocabPanel";
 import AdminListeningPanel from "@/components/AdminListeningPanel";
 import AdminReadingPanel from "@/components/AdminReadingPanel";
@@ -46,13 +48,21 @@ import {
   type WritingTaskType,
 } from "@/types/exam";
 
-type AdminTab = "writing" | "speaking" | "reading" | "listening" | "vocab" | "mocks";
+type AdminTab =
+  | "generate"
+  | "writing"
+  | "speaking"
+  | "reading"
+  | "listening"
+  | "vocab"
+  | "mocks";
 
 const ADMIN_TABS: Array<{
   value: AdminTab;
   label: string;
   icon: typeof PenLine;
 }> = [
+  { value: "generate", label: "PDF → Generate", icon: Sparkles },
   { value: "writing", label: "Writing prompts", icon: PenLine },
   { value: "speaking", label: "Speaking prompts", icon: Mic },
   { value: "reading", label: "Reading passages", icon: BookOpenCheck },
@@ -75,7 +85,7 @@ const emptyForm: WritingPromptInput = {
 export default function AdminDashboardPage() {
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<AdminTab>("writing");
+  const [tab, setTab] = useState<AdminTab>("generate");
   const [form, setForm] = useState<WritingPromptInput>(emptyForm);
   const [error, setError] = useState<string | null>(null);
 
@@ -183,7 +193,9 @@ export default function AdminDashboardPage() {
               {ADMIN_TABS.find((t) => t.value === tab)?.label ?? "Admin"}
             </h2>
             <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-              Manage exam practice content and publishing
+              {tab === "generate"
+                ? "Upload a PDF and generate published practice content into selected features"
+                : "Manage exam practice content and publishing"}
             </p>
           </div>
 
@@ -241,7 +253,9 @@ export default function AdminDashboardPage() {
           </Card>
 
           <div className="space-y-6 [&_h3]:text-uk-navy [&_label]:font-medium [&_label]:text-uk-navy [&_select]:border-[var(--color-border)] [&_select]:bg-white [&_select]:text-uk-navy [&_select]:shadow-sm [&_textarea]:border-[var(--color-border)] [&_textarea]:bg-white [&_textarea]:text-uk-navy [&_textarea]:shadow-sm [&_input]:text-uk-navy">
-          {tab === "speaking" ? (
+          {tab === "generate" ? (
+            <AdminPdfGeneratePanel />
+          ) : tab === "speaking" ? (
             <AdminSpeakingPanel />
           ) : tab === "reading" ? (
             <AdminReadingPanel />

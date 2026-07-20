@@ -552,3 +552,43 @@ export async function adminUpdateMockExam(
 export async function adminDeleteMockExam(id: string): Promise<void> {
   await api.delete(`/api/v1/admin/mock-exams/${id}`);
 }
+
+// ---- PDF → feature generation (admin) ----
+
+export type GenerateFeature =
+  | "writing"
+  | "speaking"
+  | "reading"
+  | "listening"
+  | "vocab"
+  | "mocks";
+
+export interface GenerateFromPdfResult {
+  created: Record<string, string[]>;
+  errors: string[];
+  source_chars: number;
+  source_name: string;
+  published: boolean;
+}
+
+export async function adminGenerateFromPdf(params: {
+  file: File;
+  exam: string;
+  features: GenerateFeature[];
+}): Promise<GenerateFromPdfResult> {
+  const form = new FormData();
+  form.append("file", params.file);
+  form.append("exam", params.exam);
+  form.append("features", params.features.join(","));
+
+  const { data } = await api.post<GenerateFromPdfResult>(
+    "/api/v1/admin/generate/from-pdf",
+    form,
+    {
+      headers: { "Content-Type": false as unknown as string },
+      // Generation (esp. listening TTS) can take a few minutes.
+      timeout: 300_000,
+    }
+  );
+  return data;
+}

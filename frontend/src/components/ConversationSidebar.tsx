@@ -71,16 +71,16 @@ export default function ConversationSidebar({
   };
 
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-[var(--color-border)] bg-white">
-      <div className="space-y-2 p-3">
-        <Button className="w-full" onClick={() => onSelect(null)}>
-          <MessageSquarePlus className="h-4 w-4" />
+    <aside className="flex h-full w-48 shrink-0 flex-col border-r border-[var(--color-border)] bg-slate-50/80 xl:w-52">
+      <div className="space-y-2 border-b border-[var(--color-border)] bg-white p-2">
+        <Button className="h-8 w-full text-xs" size="sm" onClick={() => onSelect(null)}>
+          <MessageSquarePlus className="h-3.5 w-3.5" />
           New chat
         </Button>
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+          <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
           <Input
-            className="pl-8"
+            className="h-8 pl-7 text-xs"
             placeholder="Search chats"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -88,7 +88,7 @@ export default function ConversationSidebar({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-3">
+      <div className="flex-1 overflow-y-auto px-1.5 py-2">
         {!conversations || conversations.length === 0 ? (
           <p className="px-2 py-6 text-center text-xs text-[var(--color-muted-foreground)]">
             {search ? "No matching chats." : "No chats yet."}
@@ -101,8 +101,8 @@ export default function ConversationSidebar({
               return (
                 <li key={conv.id}>
                   <div
-                    className={`group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm ${
-                      isActive ? "bg-[var(--color-accent)]" : "hover:bg-slate-50"
+                    className={`group flex items-center gap-0.5 rounded-md px-1.5 py-1 text-xs ${
+                      isActive ? "bg-[var(--color-accent)]" : "hover:bg-white"
                     }`}
                   >
                     {isEditing ? (
@@ -110,7 +110,7 @@ export default function ConversationSidebar({
                         <Input
                           value={editTitle}
                           onChange={(e) => setEditTitle(e.target.value)}
-                          className="h-7"
+                          className="h-6 text-xs"
                           autoFocus
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && editTitle.trim())

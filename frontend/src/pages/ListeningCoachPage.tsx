@@ -60,10 +60,16 @@ export default function ListeningCoachPage() {
     queryFn: listListeningAttempts,
   });
 
-  const { data: exercise, isLoading: exerciseLoading } = useQuery({
+  const {
+    data: exercise,
+    isLoading: exerciseLoading,
+    isError: exerciseError,
+    error: exerciseQueryError,
+  } = useQuery({
     queryKey: ["listening-exercise", selectedId],
     queryFn: () => getPublishedListeningExercise(selectedId as string),
     enabled: !!selectedId,
+    retry: 1,
   });
 
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -312,6 +318,18 @@ export default function ListeningCoachPage() {
               <div className="flex justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
+            )}
+
+            {selectedId && !exerciseLoading && (exerciseError || !exercise) && (
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-uk-red">
+                  {getApiErrorMessage(
+                    exerciseQueryError,
+                    error ||
+                      "Could not load this listening exercise. Try selecting it again."
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {exercise && !result && (

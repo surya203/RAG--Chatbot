@@ -27,6 +27,7 @@ from app.schemas.reading import (
     ReadingQuestionPublic,
     ReadingResultItem,
 )
+from app.services.question_options import normalize_answer, normalize_options
 from app.services import reading as reading_service
 
 router = APIRouter(tags=["reading"])
@@ -85,8 +86,8 @@ def _admin_payload(passage: ReadingPassage) -> ReadingPassageAdmin:
                 order_index=q.order_index,
                 question_type=q.question_type,
                 question_text=q.question_text,
-                options=q.options,
-                correct_answer=q.correct_answer,
+                options=normalize_options(q.options),
+                correct_answer=normalize_answer(q.correct_answer),
                 explanation=q.explanation,
             )
             for q in sorted(passage.questions, key=lambda x: x.order_index)
@@ -112,7 +113,7 @@ def _student_payload(passage: ReadingPassage) -> ReadingPassageStudent:
                 order_index=q.order_index,
                 question_type=q.question_type,
                 question_text=q.question_text,
-                options=q.options,
+                options=normalize_options(q.options),
             )
             for q in sorted(passage.questions, key=lambda x: x.order_index)
         ],

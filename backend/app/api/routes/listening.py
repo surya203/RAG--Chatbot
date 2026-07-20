@@ -32,6 +32,7 @@ from app.schemas.listening import (
     VocabItem,
 )
 from app.services import reading as reading_service
+from app.services.question_options import normalize_answer, normalize_options
 
 router = APIRouter(tags=["listening"])
 
@@ -77,7 +78,15 @@ def _get_exercise(exercise_id: str, db: Session) -> ListeningExercise:
 def _parse_vocab(raw: list | None) -> list[VocabItem] | None:
     if not raw:
         return None
-    return [VocabItem(word=v["word"], definition=v["definition"]) for v in raw]
+    parsed: list[VocabItem] = []
+    for v in raw:
+        if not isinstance(v, dict):
+            continue
+        word = str(v.get("word") or "").strip()
+        definition = str(v.get("definition") or "").strip()
+        if word and definition:
+            parsed.append(VocabItem(word=word, definition=definition))
+    return parsed or None
 
 
 def _admin_payload(exercise: ListeningExercise) -> ListeningExerciseAdmin:
@@ -100,8 +109,8 @@ def _admin_payload(exercise: ListeningExercise) -> ListeningExerciseAdmin:
                 order_index=q.order_index,
                 question_type=q.question_type,
                 question_text=q.question_text,
-                options=q.options,
-                correct_answer=q.correct_answer,
+                options=normalize_options(q.options),
+                correct_answer=normalize_answer(q.correct_answer),
                 explanation=q.explanation,
             )
             for q in sorted(exercise.questions, key=lambda x: x.order_index)
@@ -127,7 +136,7 @@ def _student_payload(exercise: ListeningExercise) -> ListeningExerciseStudent:
                 order_index=q.order_index,
                 question_type=q.question_type,
                 question_text=q.question_text,
-                options=q.options,
+                options=normalize_options(q.options),
             )
             for q in sorted(exercise.questions, key=lambda x: x.order_index)
         ],

@@ -12,12 +12,14 @@ import {
 } from "lucide-react";
 
 import ConversationSidebar from "@/components/ConversationSidebar";
+import ChatPdfScope from "@/components/ChatPdfScope";
 import { Markdown } from "@/components/Markdown";
 import { Button } from "@/components/ui/button";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { streamChatQuery } from "@/services/chat";
 import { getConversation } from "@/services/conversations";
+import { listDocuments } from "@/services/documents";
 import type { SourceChunk } from "@/types/chat";
 import type { Message } from "@/types/conversation";
 
@@ -30,6 +32,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +46,15 @@ export default function ChatPage() {
     queryFn: () => getConversation(activeId as string),
     enabled: !!activeId,
   });
+
+  const { data: documents } = useQuery({
+    queryKey: ["documents"],
+    queryFn: listDocuments,
+  });
+
+  const selectedPdfNames = selectedDocIds
+    .map((id) => documents?.find((d) => d.id === id)?.original_name)
+    .filter((name): name is string => Boolean(name));
 
   // Load server messages into view when the selected conversation changes —
   // but never clobber an in-progress stream.
@@ -94,7 +106,12 @@ export default function ChatPage() {
 
     try {
       await streamChatQuery(
-        { question: q, conversation_id: activeId ?? undefined },
+        {
+          question: q,
+          conversation_id: activeId ?? undefined,
+          document_ids:
+            selectedDocIds.length > 0 ? selectedDocIds : undefined,
+        },
         {
           signal: controller.signal,
           onMeta: ({ conversation_id }) => {
@@ -134,18 +151,41 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-full min-h-0 bg-slate-50">
+    <div className="flex h-full min-h-0 bg-slate-100">
       <ConversationSidebar activeId={activeId} onSelect={(id) => setActiveId(id)} />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-[var(--color-border)] bg-white px-4 py-3">
-          <h1 className="truncate text-sm font-semibold">
-            {detail?.title ?? "New chat"}
-          </h1>
+      <ChatPdfScope selectedIds={selectedDocIds} onChange={setSelectedDocIds} />
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white shadow-sm">
+        <header className="border-b border-[var(--color-border)] px-4 py-2.5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="truncate text-sm font-semibold text-uk-navy sm:text-base">
+              {detail?.title ?? "New chat"}
+            </h1>
+            {selectedPdfNames.length > 0 && (
+              <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+                {selectedPdfNames.map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-uk-red/20 bg-uk-red/5 px-2 py-0.5 text-[10px] font-medium text-uk-navy sm:max-w-[240px]"
+                    title={name}
+                  >
+                    <FileText className="h-3 w-3 shrink-0 text-uk-red" />
+                    <span className="truncate">{name}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          {selectedPdfNames.length === 0 && (
+            <p className="mt-0.5 text-[11px] text-[var(--color-muted-foreground)]">
+              Upload a PDF in the sidebar to chat with your materials.
+            </p>
+          )}
         </header>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="mx-auto max-w-3xl space-y-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-none space-y-5 xl:max-w-5xl">
             {messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-[var(--color-muted-foreground)]">
                 Ask a question about your PDFs to start a new conversation.
@@ -203,9 +243,11 @@ export default function ChatPage() {
                     )}
                   </div>
                   {m.role === "user" ? (
-                    <p className="whitespace-pre-wrap text-sm">{m.content}</p>
+                    <p className="whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed">
+                      {m.content}
+                    </p>
                   ) : (
-                    <div className="rounded-lg border border-[var(--color-border)] bg-white p-3">
+                    <div className="rounded-lg border border-[var(--color-border)] bg-white p-4 shadow-sm">
                       {m.content ? (
                         <Markdown content={m.content} />
                       ) : (
@@ -243,8 +285,8 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="border-t border-[var(--color-border)] bg-white p-4">
-          <div className="mx-auto flex max-w-3xl gap-2">
+        <div className="border-t border-[var(--color-border)] bg-white px-4 py-3 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-none gap-2 xl:max-w-5xl">
             {stt.supported && (
               <Button
                 variant={stt.listening ? "default" : "outline"}
@@ -291,7 +333,7 @@ export default function ChatPage() {
             )}
           </div>
           {stt.error && (
-            <p className="mx-auto mt-2 max-w-3xl text-xs text-[var(--color-destructive)]">
+            <p className="mx-auto mt-2 w-full max-w-none text-xs text-[var(--color-destructive)] xl:max-w-5xl">
               {stt.error}
             </p>
           )}

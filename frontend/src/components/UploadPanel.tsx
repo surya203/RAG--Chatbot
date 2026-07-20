@@ -7,10 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getApiErrorMessage } from "@/lib/api";
 import { uploadDocuments } from "@/services/documents";
+import type { Document } from "@/types/document";
 
 interface UploadPanelProps {
   /** Existing subjects, offered as autocomplete suggestions. */
   subjects: string[];
+  defaultSubject?: string;
+  compact?: boolean;
+  onUploaded?: (documents: Document[]) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -19,12 +23,17 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function UploadPanel({ subjects }: UploadPanelProps) {
+export default function UploadPanel({
+  subjects,
+  defaultSubject = "",
+  compact = false,
+  onUploaded,
+}: UploadPanelProps) {
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [files, setFiles] = useState<File[]>([]);
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(defaultSubject);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -43,6 +52,9 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
       if (inputRef.current) inputRef.current.value = "";
       const ok = data.uploaded.length;
       setNotice(`${ok} file${ok === 1 ? "" : "s"} uploaded.`);
+      if (data.uploaded.length > 0) {
+        onUploaded?.(data.uploaded);
+      }
       if (data.errors.length > 0) {
         setError(data.errors.join("  •  "));
       }
@@ -65,16 +77,19 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="subject">Subject</Label>
+    <div className={compact ? "space-y-2" : "space-y-4"}>
+      <div className="space-y-1">
+        <Label htmlFor="subject" className={compact ? "text-xs" : undefined}>
+          Subject
+        </Label>
         <Input
           id="subject"
           list="subject-suggestions"
-          placeholder="e.g. Biology (leave blank for Unsorted)"
+          placeholder={compact ? "My notes" : "e.g. My notes (leave blank for Unsorted)"}
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           disabled={mutation.isPending}
+          className={compact ? "h-8 text-xs" : undefined}
         />
         <datalist id="subject-suggestions">
           {subjects.map((s) => (
@@ -84,7 +99,9 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
       </div>
 
       <div
-        className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-uk-navy/20 p-6 text-center transition-colors hover:border-uk-navy/40 hover:bg-uk-navy/5"
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-uk-navy/20 text-center transition-colors hover:border-uk-navy/40 hover:bg-uk-navy/5 ${
+          compact ? "p-3" : "p-6"
+        }`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -92,11 +109,15 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
           addFiles(e.dataTransfer.files);
         }}
       >
-        <Upload className="mb-2 h-6 w-6 text-uk-navy/50" />
-        <p className="text-sm font-medium">Click to choose PDFs or drag them here</p>
-        <p className="text-xs text-[var(--color-muted-foreground)]">
-          Multiple files supported • PDF only
+        <Upload className={`mb-1 text-uk-navy/50 ${compact ? "h-4 w-4" : "h-6 w-6"}`} />
+        <p className={`font-medium ${compact ? "text-xs" : "text-sm"}`}>
+          {compact ? "Choose or drop PDFs" : "Click to choose PDFs or drag them here"}
         </p>
+        {!compact && (
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            Multiple files supported • PDF only
+          </p>
+        )}
         <input
           ref={inputRef}
           type="file"
@@ -154,7 +175,7 @@ export default function UploadPanel({ subjects }: UploadPanelProps) {
       {error && <p className="text-sm text-[var(--color-destructive)]">{error}</p>}
 
       <Button
-        className="w-full bg-uk-red shadow-sm hover:bg-uk-red-dark"
+        className={`w-full bg-uk-red shadow-sm hover:bg-uk-red-dark ${compact ? "h-8 text-xs" : ""}`}
         disabled={files.length === 0 || mutation.isPending}
         onClick={() => mutation.mutate()}
       >
