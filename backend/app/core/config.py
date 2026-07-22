@@ -13,6 +13,15 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     RESET_TOKEN_EXPIRE_MINUTES: int = 30
     CORS_ORIGINS: str = "http://localhost:5173"
+    # Public frontend URL used in password-reset emails (Vercel URL in production).
+    FRONTEND_URL: str = ""
+    # Gmail SMTP — set both SMTP_USER and SMTP_PASSWORD to enable email delivery.
+    # Use a Google App Password, not your regular Gmail password.
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_NAME: str = "Exam Coach"
     # Directory (relative to the backend root or absolute) where uploaded
     # PDF files are stored on disk.
     STORAGE_DIR: str = "storage/uploads"
@@ -38,6 +47,18 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.SMTP_USER.strip() and self.SMTP_PASSWORD.strip())
+
+    @property
+    def frontend_base_url(self) -> str:
+        if self.FRONTEND_URL.strip():
+            return self.FRONTEND_URL.rstrip("/")
+        if self.cors_origins_list:
+            return self.cors_origins_list[0].rstrip("/")
+        return "http://localhost:5173"
 
 
 settings = Settings()

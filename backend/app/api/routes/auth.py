@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -26,8 +28,10 @@ from app.schemas.auth import (
     TokenResponse,
     UserPublic,
 )
+from app.services.email import EmailDeliveryError, send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 def _build_login_response(user: User) -> LoginResponse:
@@ -132,8 +136,20 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 
     reset_token = create_password_reset_token(str(user.id), user.hashed_password)
 
-    # Dev-only: return the token directly because email delivery is not wired
-    # up yet. In production, email this to the user and leave reset_token None.
+    if settings.email_enabled:
+        try:
+            send_password_reset_email(
+                to_email=user.email,
+                reset_token=reset_token,
+                full_name=user.full_name,
+            )
+        except EmailDeliveryError:
+            # Log internally; still return the generic message to avoid leaking
+            # whether the account exists or whether email delivery succeeded.
+            logger.exception("Password reset email failed for user id=%s", user.id)
+        return ForgotPasswordResponse(message=generic_message)
+
+    # Dev fallback when SMTP is not configured.
     return ForgotPasswordResponse(message=generic_message, reset_token=reset_token)
 
 
