@@ -102,13 +102,18 @@ If you did not request this, you can safely ignore this email.
     message.attach(MIMEText(text_body, "plain", "utf-8"))
     message.attach(MIMEText(html_body, "html", "utf-8"))
 
+    smtp_user = settings.SMTP_USER.strip()
+    # Google App Passwords are often copied with spaces; strip them for login.
+    smtp_password = settings.SMTP_PASSWORD.replace(" ", "").strip()
+
     try:
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
-            server.login(settings.SMTP_USER.strip(), settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_USER.strip(), [to_email], message.as_string())
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, [to_email], message.as_string())
+        logger.info("Password reset email sent to %s", to_email)
     except Exception as exc:
         logger.exception("Failed to send password reset email to %s", to_email)
         raise EmailDeliveryError("Could not send reset email") from exc

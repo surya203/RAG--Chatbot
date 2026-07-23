@@ -71,7 +71,9 @@ export default function ForgotPasswordPage() {
                 <CheckCircle2 className="mx-auto mb-2 h-5 w-5" />
                 <p>{message}</p>
                 <p className="mt-2 text-xs text-green-700/80">
-                  The link expires after 30 minutes. Check spam if you do not see it.
+                  Look for an email from Exam Coach with a <strong>Reset password</strong>{" "}
+                  button (not an OTP code). It expires in 30 minutes — check Spam / Promotions
+                  if you do not see it.
                 </p>
               </div>
               <Button asChild variant="outline" className="w-full">

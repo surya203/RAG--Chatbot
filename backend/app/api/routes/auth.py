@@ -144,9 +144,14 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
                 full_name=user.full_name,
             )
         except EmailDeliveryError:
-            # Log internally; still return the generic message to avoid leaking
-            # whether the account exists or whether email delivery succeeded.
             logger.exception("Password reset email failed for user id=%s", user.id)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "We could not send the reset email right now. "
+                    "Please try again in a few minutes, or contact support."
+                ),
+            ) from None
         return ForgotPasswordResponse(message=generic_message)
 
     # Dev fallback when SMTP is not configured.
