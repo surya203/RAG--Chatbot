@@ -33,6 +33,11 @@ def generate_stored_filename() -> str:
     return f"{uuid.uuid4().hex}.pdf"
 
 
+def generate_generation_source_filename() -> str:
+    """Opaque path under generation/ for admin PDF → Generate sources."""
+    return f"generation/{uuid.uuid4().hex}.pdf"
+
+
 def generate_audio_filename(original_name: str) -> str:
     ext = Path(original_name).suffix.lower()
     if ext not in AUDIO_EXTENSIONS:

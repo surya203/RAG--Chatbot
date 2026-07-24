@@ -569,6 +569,20 @@ export interface GenerateFromPdfResult {
   source_chars: number;
   source_name: string;
   published: boolean;
+  source_id?: string | null;
+}
+
+export interface GenerationSource {
+  id: string;
+  original_name: string;
+  size_bytes: number;
+  exam: string;
+  features: string[];
+  created_items: Record<string, string[]>;
+  source_chars: number;
+  errors: string[];
+  created_at: string;
+  item_count: number;
 }
 
 export async function adminGenerateFromPdf(params: {
@@ -591,4 +605,23 @@ export async function adminGenerateFromPdf(params: {
     }
   );
   return data;
+}
+
+export async function adminListGenerationSources(): Promise<GenerationSource[]> {
+  const { data } = await api.get<GenerationSource[]>(
+    "/api/v1/admin/generate/sources"
+  );
+  return data;
+}
+
+export async function adminDeleteGenerationSource(id: string): Promise<void> {
+  await api.delete(`/api/v1/admin/generate/sources/${id}`);
+}
+
+export async function fetchGenerationSourceBlobUrl(id: string): Promise<string> {
+  const { data } = await api.get<Blob>(
+    `/api/v1/admin/generate/sources/${id}/file`,
+    { responseType: "blob" }
+  );
+  return URL.createObjectURL(data);
 }
