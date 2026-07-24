@@ -107,10 +107,20 @@ export function getStoredAccessToken() {
 /** Pull a human-readable message out of an axios/FastAPI error response. */
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
+    if (error.code === "ECONNABORTED") {
+      return "Request timed out. On Render, generation can be slow — try fewer features, or uncheck Listening and try again.";
+    }
+    if (!error.response) {
+      return "Could not reach the API. The Render service may be waking up — wait 30s and try again.";
+    }
+    if (error.response.status === 502 || error.response.status === 504) {
+      return "The server timed out while generating. Try again with fewer features (uncheck Listening first).";
+    }
     const detail = error.response?.data?.detail;
     if (typeof detail === "string") return detail;
     // FastAPI validation errors come back as an array of {msg, ...}.
     if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
   }
+  if (error instanceof Error && error.message) return error.message;
   return fallback;
 }

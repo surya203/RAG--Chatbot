@@ -3,11 +3,18 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+
+# pending = PDF saved, generation in progress / not finished
+# ready = finished (may have partial errors)
+# failed = nothing useful created
+STATUS_PENDING = "pending"
+STATUS_READY = "ready"
+STATUS_FAILED = "failed"
 
 
 class GenerationSource(Base):
@@ -38,6 +45,9 @@ class GenerationSource(Base):
     created_items: Mapped[dict] = mapped_column(JSONB, default=dict)
     source_chars: Mapped[int] = mapped_column(Integer, default=0)
     errors: Mapped[list] = mapped_column(JSONB, default=list)
+    status: Mapped[str] = mapped_column(String(20), default=STATUS_READY, index=True)
+    # Extracted PDF text kept for stepwise / retry generation on hosts with short timeouts.
+    source_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )

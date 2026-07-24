@@ -541,3 +541,154 @@ def generate_from_pdf_text(
 
     db.commit()
     return result
+
+
+def generate_single_feature(
+    db: Session,
+    *,
+    source_text: str,
+    exam: str,
+    feature: str,
+    admin_id: uuid.UUID,
+    published: bool = True,
+    source_label: str = "Uploaded PDF",
+    existing: dict[str, list[str]] | None = None,
+) -> tuple[list[str], str | None]:
+    """Generate one feature. Returns (created_ids, error_or_none).
+
+    For mocks, loads previously created skill rows from ``existing`` IDs when needed.
+    """
+    if exam not in SUPPORTED_EXAMS:
+        raise ValueError(f"Unsupported exam: {exam}")
+    if feature not in VALID_FEATURES:
+        raise ValueError(f"Unsupported feature: {feature}")
+
+    source = _clip_source(source_text)
+    if len(source) < 200:
+        raise ValueError("PDF text is too short to generate useful content.")
+
+    existing = existing or {}
+
+    def _load_writing() -> WritingPrompt | None:
+        ids = existing.get("writing") or []
+        if not ids:
+            return None
+        try:
+            return (
+                db.query(WritingPrompt)
+                .filter(WritingPrompt.id == uuid.UUID(ids[0]))
+                .first()
+            )
+        except ValueError:
+            return None
+
+    def _load_speaking() -> SpeakingPrompt | None:
+        ids = existing.get("speaking") or []
+        if not ids:
+            return None
+        try:
+            return (
+                db.query(SpeakingPrompt)
+                .filter(SpeakingPrompt.id == uuid.UUID(ids[0]))
+                .first()
+            )
+        except ValueError:
+            return None
+
+    def _load_reading() -> ReadingPassage | None:
+        ids = existing.get("reading") or []
+        if not ids:
+            return None
+        try:
+            return (
+                db.query(ReadingPassage)
+                .filter(ReadingPassage.id == uuid.UUID(ids[0]))
+                .first()
+            )
+        except ValueError:
+            return None
+
+    def _load_listening() -> ListeningExercise | None:
+        ids = existing.get("listening") or []
+        if not ids:
+            return None
+        try:
+            return (
+                db.query(ListeningExercise)
+                .filter(ListeningExercise.id == uuid.UUID(ids[0]))
+                .first()
+            )
+        except ValueError:
+            return None
+
+    try:
+        if feature == "writing":
+            row = generate_writing(
+                db, exam=exam, source=source, admin_id=admin_id, published=published
+            )
+            db.commit()
+            return [str(row.id)], None
+        if feature == "speaking":
+            row = generate_speaking(
+                db, exam=exam, source=source, admin_id=admin_id, published=published
+            )
+            db.commit()
+            return [str(row.id)], None
+        if feature == "reading":
+            row = generate_reading(
+                db, exam=exam, source=source, admin_id=admin_id, published=published
+            )
+            db.commit()
+            return [str(row.id)], None
+        if feature == "listening":
+            row = generate_listening(
+                db, exam=exam, source=source, admin_id=admin_id, published=published
+            )
+            db.commit()
+            return [str(row.id)], None
+        if feature == "vocab":
+            cards = generate_vocab(
+                db, exam=exam, source=source, admin_id=admin_id, published=published
+            )
+            db.commit()
+            return [str(c.id) for c in cards], None
+        if feature == "mocks":
+            writing = _load_writing()
+            speaking = _load_speaking()
+            reading = _load_reading()
+            listening = _load_listening()
+            # Auto-create missing skill pieces so a mock can still be built.
+            if writing is None:
+                writing = generate_writing(
+                    db, exam=exam, source=source, admin_id=admin_id, published=published
+                )
+            if speaking is None:
+                speaking = generate_speaking(
+                    db, exam=exam, source=source, admin_id=admin_id, published=published
+                )
+            if reading is None:
+                reading = generate_reading(
+                    db, exam=exam, source=source, admin_id=admin_id, published=published
+                )
+            if listening is None:
+                listening = generate_listening(
+                    db, exam=exam, source=source, admin_id=admin_id, published=published
+                )
+            mock = generate_mock(
+                db,
+                exam=exam,
+                title_hint=f"Mock from {source_label}",
+                admin_id=admin_id,
+                published=published,
+                writing=writing,
+                speaking=speaking,
+                reading=reading,
+                listening=listening,
+            )
+            db.commit()
+            return [str(mock.id)], None
+    except (LLMError, TTSError, ValueError) as exc:
+        db.rollback()
+        return [], str(exc)
+
+    return [], f"Unhandled feature: {feature}"

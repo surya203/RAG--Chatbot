@@ -23,8 +23,9 @@ import { Label } from "@/components/ui/label";
 import { getApiErrorMessage } from "@/lib/api";
 import {
   adminDeleteGenerationSource,
-  adminGenerateFromPdf,
+  adminGenerateFeature,
   adminListGenerationSources,
+  adminPrepareFromPdf,
   type GenerateFeature,
   type GenerateFromPdfResult,
   type GenerationSource,
@@ -98,6 +99,7 @@ export default function AdminPdfGeneratePanel() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateFromPdfResult | null>(null);
   const [preview, setPreview] = useState<GenerationSource | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
 
   const { data: sources, isLoading: sourcesLoading } = useQuery({
     queryKey: ["admin-generation-sources"],
@@ -115,22 +117,66 @@ export default function AdminPdfGeneratePanel() {
   };
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!file) throw new Error("Choose a PDF first.");
-      return adminGenerateFromPdf({ file, exam, features });
+      const order: GenerateFeature[] = [
+        "writing",
+        "speaking",
+        "reading",
+        "listening",
+        "vocab",
+        "mocks",
+      ];
+      const selected = order.filter((f) => features.includes(f));
+
+      setProgress("Uploading & extracting PDF text…");
+      const prepared = await adminPrepareFromPdf({ file, exam, features: selected });
+
+      let created: Record<string, string[]> = {};
+      const errors: string[] = [];
+      let status = prepared.status;
+
+      for (let i = 0; i < selected.length; i++) {
+        const feature = selected[i];
+        setProgress(
+          `Generating ${feature}… (${i + 1}/${selected.length})`
+        );
+        const step = await adminGenerateFeature(prepared.source_id, feature);
+        created = step.created_items;
+        errors.splice(0, errors.length, ...step.errors);
+        status = step.status;
+      }
+
+      if (Object.keys(created).length === 0 && errors.length > 0) {
+        throw new Error(errors.join(" · "));
+      }
+
+      return {
+        created,
+        errors,
+        source_chars: prepared.source_chars,
+        source_name: prepared.source_name,
+        published: true,
+        source_id: prepared.source_id,
+        status,
+      } satisfies GenerateFromPdfResult;
     },
     onMutate: () => {
       setError(null);
       setResult(null);
+      setProgress(null);
     },
     onSuccess: (data) => {
       setResult(data);
       setFile(null);
+      setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
       invalidateFeatureLists();
     },
     onError: (err) => {
+      setProgress(null);
       setError(getApiErrorMessage(err, "Generation failed. Please try again."));
+      invalidateFeatureLists();
     },
   });
 
@@ -279,24 +325,24 @@ export default function AdminPdfGeneratePanel() {
               disabled={!file || features.length === 0 || mutation.isPending}
               onClick={() => mutation.mutate()}
             >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating published content…
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Upload &amp; Generate
-                </>
-              )}
-            </Button>
-            {mutation.isPending && (
-              <p className="text-center text-xs text-[var(--color-muted-foreground)]">
-                This can take 1–3 minutes (especially listening audio). Keep this
-                tab open.
-              </p>
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {progress ?? "Generating…"}
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Upload &amp; Generate
+              </>
             )}
+          </Button>
+          {mutation.isPending && (
+            <p className="text-center text-xs text-[var(--color-muted-foreground)]">
+              Generating one feature at a time so production (Render) does not
+              time out. Keep this tab open — listening audio is the slowest step.
+            </p>
+          )}
           </CardContent>
         </Card>
 
@@ -392,12 +438,24 @@ export default function AdminPdfGeneratePanel() {
                     <p className="mt-1 text-[11px] capitalize text-uk-navy/70">
                       {src.features.join(" · ") || "—"}
                     </p>
+                    {src.size_bytes === 0 && (
+                      <p className="mt-1 text-[11px] text-amber-700">
+                        Original file not retained — you can still delete the
+                        generated content.
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={src.size_bytes === 0}
+                      title={
+                        src.size_bytes === 0
+                          ? "Original PDF was not saved for this legacy upload"
+                          : "Preview PDF"
+                      }
                       onClick={() => setPreview(src)}
                     >
                       <Eye className="h-4 w-4" />

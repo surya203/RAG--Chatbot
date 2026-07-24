@@ -570,6 +570,7 @@ export interface GenerateFromPdfResult {
   source_name: string;
   published: boolean;
   source_id?: string | null;
+  status?: string;
 }
 
 export interface GenerationSource {
@@ -581,8 +582,63 @@ export interface GenerationSource {
   created_items: Record<string, string[]>;
   source_chars: number;
   errors: string[];
+  status: string;
   created_at: string;
   item_count: number;
+}
+
+export interface PrepareFromPdfResult {
+  source_id: string;
+  source_name: string;
+  source_chars: number;
+  features: string[];
+  exam: string;
+  status: string;
+}
+
+export interface GenerateFeatureResult {
+  source_id: string;
+  feature: string;
+  created_ids: string[];
+  error: string | null;
+  created_items: Record<string, string[]>;
+  errors: string[];
+  status: string;
+}
+
+/** Preferred on Render: upload/extract only (fast), then generate features one-by-one. */
+export async function adminPrepareFromPdf(params: {
+  file: File;
+  exam: string;
+  features: GenerateFeature[];
+}): Promise<PrepareFromPdfResult> {
+  const form = new FormData();
+  form.append("file", params.file);
+  form.append("exam", params.exam);
+  form.append("features", params.features.join(","));
+
+  const { data } = await api.post<PrepareFromPdfResult>(
+    "/api/v1/admin/generate/prepare",
+    form,
+    {
+      headers: { "Content-Type": false as unknown as string },
+      timeout: 120_000,
+    }
+  );
+  return data;
+}
+
+export async function adminGenerateFeature(
+  sourceId: string,
+  feature: GenerateFeature
+): Promise<GenerateFeatureResult> {
+  const { data } = await api.post<GenerateFeatureResult>(
+    `/api/v1/admin/generate/sources/${sourceId}/generate-feature`,
+    { feature },
+    // Listening TTS can be slow; keep under common proxy limits by running alone.
+    { timeout: 180_000 }
+  );
+  return data;
 }
 
 export async function adminGenerateFromPdf(params: {
@@ -590,21 +646,42 @@ export async function adminGenerateFromPdf(params: {
   exam: string;
   features: GenerateFeature[];
 }): Promise<GenerateFromPdfResult> {
-  const form = new FormData();
-  form.append("file", params.file);
-  form.append("exam", params.exam);
-  form.append("features", params.features.join(","));
+  // Stepwise flow avoids Render killing a 3+ minute single request.
+  const prepared = await adminPrepareFromPdf(params);
+  const order: GenerateFeature[] = [
+    "writing",
+    "speaking",
+    "reading",
+    "listening",
+    "vocab",
+    "mocks",
+  ];
+  const selected = order.filter((f) => params.features.includes(f));
 
-  const { data } = await api.post<GenerateFromPdfResult>(
-    "/api/v1/admin/generate/from-pdf",
-    form,
-    {
-      headers: { "Content-Type": false as unknown as string },
-      // Generation (esp. listening TTS) can take a few minutes.
-      timeout: 300_000,
-    }
-  );
-  return data;
+  let created: Record<string, string[]> = {};
+  const errors: string[] = [];
+  let status = prepared.status;
+
+  for (const feature of selected) {
+    const step = await adminGenerateFeature(prepared.source_id, feature);
+    created = step.created_items;
+    errors.splice(0, errors.length, ...step.errors);
+    status = step.status;
+  }
+
+  if (Object.keys(created).length === 0 && errors.length > 0) {
+    throw new Error(errors.join(" · "));
+  }
+
+  return {
+    created,
+    errors,
+    source_chars: prepared.source_chars,
+    source_name: prepared.source_name,
+    published: true,
+    source_id: prepared.source_id,
+    status,
+  };
 }
 
 export async function adminListGenerationSources(): Promise<GenerationSource[]> {
